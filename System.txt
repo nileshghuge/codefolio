@@ -1,0 +1,610 @@
+# CodeFolio – System Design Note
+
+## 1. Project Overview
+
+**CodeFolio** is a full-stack portfolio builder designed for developers.
+
+It allows developers to:
+
+* Create an account
+* Build their developer profile
+* Add skills and projects
+* Select a portfolio template
+* Preview their portfolio
+* Save portfolio data in MongoDB
+* Publish their portfolio using a username
+* Receive messages through a contact form
+
+---
+
+## 2. Technology Stack
+
+### Frontend
+
+* React
+* Vite
+* React Router
+* React Hook Form
+* Axios
+* React Helmet Async
+* CSS
+
+### Backend
+
+* Node.js
+* Express.js
+* MongoDB
+* Mongoose
+* JWT
+* bcryptjs
+* Nodemailer
+
+### Database
+
+MongoDB stores:
+
+* User accounts
+* Portfolio profiles
+* Projects
+* Skills
+* Contact messages
+
+---
+
+## 3. System Architecture
+
+```text
+                 ┌─────────────────────┐
+                 │      Developer      │
+                 └──────────┬──────────┘
+                            │
+                            ▼
+                 ┌─────────────────────┐
+                 │   React Frontend    │
+                 │      CodeFolio       │
+                 └──────────┬──────────┘
+                            │
+                     HTTP / REST API
+                            │
+                            ▼
+                 ┌─────────────────────┐
+                 │   Express Backend   │
+                 │      Node.js        │
+                 └──────────┬──────────┘
+                            │
+                 ┌──────────┴──────────┐
+                 ▼                     ▼
+        ┌─────────────────┐   ┌─────────────────┐
+        │ MongoDB Atlas   │   │    Nodemailer   │
+        │                 │   │                 │
+        │ Users           │   │ Contact Email   │
+        │ Profiles        │   │                 │
+        │ Contacts        │   │                 │
+        └─────────────────┘   └─────────────────┘
+```
+
+---
+
+## 4. Database Design
+
+### User Collection
+
+Stores authentication information.
+
+```text
+User
+├── username
+├── email
+├── password
+├── isPro
+├── createdAt
+└── updatedAt
+```
+
+Passwords are hashed using bcryptjs before being stored.
+
+---
+
+### Profile Collection
+
+Stores the developer's portfolio information.
+
+```text
+Profile
+├── username
+├── name
+├── bio
+├── github
+├── linkedin
+├── resumeUrl
+├── frontendSkills[]
+├── backendSkills[]
+├── devopsSkills[]
+├── projects[]
+└── templateId
+```
+
+Each project can contain:
+
+```text
+Project
+├── title
+├── description
+├── techStack[]
+├── repoLink
+├── liveLink
+└── screenshot
+```
+
+---
+
+### Contact Collection
+
+Stores messages sent through a public portfolio.
+
+```text
+Contact
+├── username
+├── name
+├── email
+├── message
+├── createdAt
+└── updatedAt
+```
+
+---
+
+# 5. Authentication Flow
+
+CodeFolio uses JWT-based authentication.
+
+### Registration
+
+```text
+User
+ ↓
+Register Form
+ ↓
+POST /api/register
+ ↓
+Validate Data
+ ↓
+Hash Password
+ ↓
+Save User in MongoDB
+ ↓
+Generate JWT
+ ↓
+Return Token
+```
+
+### Login
+
+```text
+User
+ ↓
+Login Form
+ ↓
+POST /api/login
+ ↓
+Find User
+ ↓
+Compare Password
+ ↓
+Generate JWT
+ ↓
+Store Token in Browser
+```
+
+The Builder route is protected using the JWT token.
+
+---
+
+# 6. Protected Builder
+
+The Builder Dashboard should only be accessible to authenticated users.
+
+```text
+/builder
+   ↓
+ProtectedRoute
+   ↓
+Check localStorage token
+   ↓
+Token exists?
+   ├── NO  → /login
+   └── YES → Builder Dashboard
+```
+
+This prevents unauthenticated users from directly opening the Builder.
+
+---
+
+# 7. Portfolio Builder Flow
+
+The developer enters:
+
+* Username
+* Name
+* Bio
+* Social links
+* Resume
+* Skills
+* Projects
+* Template
+
+The frontend sends the information to:
+
+```text
+POST /api/profile
+```
+
+The Express backend stores the data in MongoDB.
+
+---
+
+# 8. Template Engine
+
+CodeFolio supports multiple portfolio templates.
+
+Current templates:
+
+```text
+minimalist
+cyberpunk
+```
+
+The selected template is stored using:
+
+```text
+templateId
+```
+
+The frontend uses a template map:
+
+```js
+const templateMap = {
+  minimalist: Minimalist,
+  cyberpunk: Cyberpunk,
+};
+```
+
+The selected template is then rendered dynamically.
+
+This architecture makes it possible to add additional templates later without changing the portfolio data structure.
+
+---
+
+# 9. Public Portfolio URLs
+
+One of the important features of CodeFolio is the username-based public portfolio.
+
+Examples:
+
+```text
+/user/demo1
+/user/demo2
+```
+
+and vanity-style URLs:
+
+```text
+/demo1
+/demo2
+```
+
+The React Router receives the username and passes it to the Portfolio component.
+
+The Portfolio component requests:
+
+```text
+GET /api/profile/:username
+```
+
+The backend searches MongoDB:
+
+```js
+Profile.findOne({
+  username: req.params.username
+});
+```
+
+The profile data is then returned to the frontend and rendered using the selected template.
+
+---
+
+# 10. Why `/:username` Works
+
+The generic route:
+
+```text
+/:username
+```
+
+captures a username from the URL.
+
+For example:
+
+```text
+/nilesh
+```
+
+React Router extracts:
+
+```text
+username = nilesh
+```
+
+The Portfolio component then requests:
+
+```text
+/api/profile/nilesh
+```
+
+The backend searches MongoDB for:
+
+```text
+username: "nilesh"
+```
+
+and returns the matching portfolio.
+
+This allows each developer to have a unique public portfolio URL.
+
+---
+
+# 11. Showcase Profiles
+
+CodeFolio supports showcase portfolio URLs such as:
+
+```text
+/user/demo1
+/user/demo2
+```
+
+These can be used for demonstrations, testing, and internship presentation.
+
+Each showcase profile can use a different template to demonstrate the template engine.
+
+---
+
+# 12. Live Preview
+
+The Builder Dashboard provides a live preview.
+
+When the developer changes:
+
+* Name
+* Bio
+* Skills
+* Projects
+* Template
+
+the preview updates without requiring the developer to publish the portfolio first.
+
+This provides immediate visual feedback.
+
+---
+
+# 13. SEO
+
+React Helmet Async is used for dynamic portfolio metadata.
+
+The portfolio generates:
+
+```text
+Title:
+Developer Name | CodeFolio
+
+Description:
+Developer Bio
+```
+
+This allows each public portfolio page to have dynamic metadata based on the developer's information.
+
+---
+
+# 14. Contact Form
+
+Public portfolios can contain a contact form.
+
+The visitor enters:
+
+```text
+Name
+Email
+Message
+```
+
+The frontend sends:
+
+```text
+POST /api/contact
+```
+
+The backend:
+
+1. Validates the form.
+2. Saves the message in MongoDB.
+3. Sends an email using Nodemailer.
+
+Flow:
+
+```text
+Visitor
+ ↓
+Contact Form
+ ↓
+POST /api/contact
+ ↓
+Express Backend
+ ↓
+MongoDB
+ ↓
+Nodemailer
+ ↓
+Portfolio Owner Email
+```
+
+The visitor's email is used as the reply-to address, so the developer's email address does not need to be exposed in the public portfolio.
+
+---
+
+# 15. Pro Badge
+
+CodeFolio supports a Pro membership flag.
+
+The User schema contains:
+
+```js
+isPro: {
+  type: Boolean,
+  default: false
+}
+```
+
+The portfolio template checks this value.
+
+If:
+
+```text
+isPro = true
+```
+
+the portfolio displays the PRO badge.
+
+If:
+
+```text
+isPro = false
+```
+
+the badge is hidden.
+
+This structure can later be connected to a payment/subscription system.
+
+---
+
+# 16. Image Optimization
+
+Project screenshots use lazy loading:
+
+```html
+loading="lazy"
+```
+
+This prevents all project images from loading immediately and can reduce the initial page loading cost when multiple projects are displayed.
+
+---
+
+# 17. API Endpoints
+
+### Authentication
+
+```text
+POST /api/register
+POST /api/login
+GET  /api/auth/me
+```
+
+### Portfolio
+
+```text
+GET  /api/profiles
+GET  /api/profile
+GET  /api/profile/:username
+POST /api/profile
+```
+
+### Contact
+
+```text
+POST /api/contact
+```
+
+---
+
+# 18. Frontend Routes
+
+```text
+/                  → Home
+/register          → Registration
+/login             → Login
+/builder           → Protected Builder
+/portfolio         → Portfolio
+/user/:username    → Public Portfolio
+/:username         → Vanity Portfolio
+```
+
+---
+
+# 19. Project Data Flow
+
+```text
+Builder Form
+     ↓
+React Hook Form
+     ↓
+Live Preview
+     ↓
+POST /api/profile
+     ↓
+Express
+     ↓
+Mongoose
+     ↓
+MongoDB
+```
+
+When a visitor opens a public portfolio:
+
+```text
+Browser
+   ↓
+React Router
+   ↓
+Portfolio Component
+   ↓
+GET /api/profile/:username
+   ↓
+Express
+   ↓
+MongoDB
+   ↓
+Profile Data
+   ↓
+Template Engine
+   ↓
+Rendered Portfolio
+```
+
+---
+
+# 20. Future Improvements
+
+Possible future features include:
+
+* Custom domains
+* Payment integration
+* Advanced Pro features
+* More portfolio templates
+* Image hosting/CDN
+* Analytics dashboard
+* Portfolio analytics
+* Email verification
+* Password reset
+* Social authentication
+* Custom fonts and colors
+* Drag-and-drop project ordering
+
+---
+
+# 21. Conclusion
+
+CodeFolio uses a modular full-stack architecture where portfolio data is separated from presentation templates.
+
+The same portfolio data can be rendered using different templates through the template engine.
+
+The username-based routing system allows every developer to publish an individual portfolio while keeping the application scalable for multiple users.
+
+The architecture also provides a foundation for future features such as premium subscriptions, custom domains, analytics, and additional portfolio templates.
