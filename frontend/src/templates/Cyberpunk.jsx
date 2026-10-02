@@ -14,7 +14,7 @@ function Cyberpunk({ profile }) {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/contact",
+        "http://https://codefolio-backend-txxm.onrender.com/api/contact",
         {
           method: "POST",
           headers: {
